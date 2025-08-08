@@ -4,12 +4,9 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"os"
 )
-
-type PixelValue interface {
-	uint32 | int32 | float32 | float64
-}
 
 func ConvertBinary(filename string, encoding string, littleEndian bool, width, height int32) []float64 {
 
@@ -27,6 +24,19 @@ func ConvertBinary(filename string, encoding string, littleEndian bool, width, h
 		buf = make([]byte, 4)
 		parseFunc = func(b []byte) float64 {
 			return float64(byteOrder.Uint32(b))
+		}
+	case "int32":
+		buf = make([]byte, 4)
+		parseFunc = func(b []byte) float64 {
+			return float64(int32(byteOrder.Uint32(b)))
+		}
+	case "float64":
+		buf = make([]byte, 4)
+		parseFunc = func(b []byte) float64 {
+			pad := make([]byte, 8)
+			copy(pad, b)
+			bits := byteOrder.Uint64(pad)
+			return math.Float64frombits(bits)
 		}
 	case "uint64":
 		buf = make([]byte, 8)
