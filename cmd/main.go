@@ -7,6 +7,6 @@ import (
 )
 
 func main() {
-	res := convert.ConvertBinary("/Users/naveenvenkatesan/Desktop/data.bin", "float64", true, 0, 0)
+	res := convert.ConvertBinary("/Users/naveenvenkatesan/Desktop/data.bin", "uint16", true, 0, 0)
 	fmt.Println(res)
 }

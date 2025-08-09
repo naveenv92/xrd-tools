@@ -4,9 +4,66 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"os"
 )
+
+type decoder struct {
+	size   int
+	parser func([]byte, binary.ByteOrder) float64
+}
+
+var decoders = map[string]decoder{
+	"uint16": {
+		size: 2,
+		parser: func(b []byte, bo binary.ByteOrder) float64 {
+			return float64(bo.Uint16(b))
+		},
+	},
+	"int16": {
+		size: 2,
+		parser: func(b []byte, bo binary.ByteOrder) float64 {
+			return float64(int16(bo.Uint16(b)))
+		},
+	},
+	"uint32": {
+		size: 4,
+		parser: func(b []byte, bo binary.ByteOrder) float64 {
+			return float64(bo.Uint32(b))
+		},
+	},
+	"int32": {
+		size: 4,
+		parser: func(b []byte, bo binary.ByteOrder) float64 {
+			return float64(int32(bo.Uint32(b)))
+		},
+	},
+	"float32": {
+		size: 4,
+		parser: func(b []byte, bo binary.ByteOrder) float64 {
+			return float64(math.Float32frombits(bo.Uint32(b)))
+		},
+	},
+	"uint64": {
+		size: 8,
+		parser: func(b []byte, bo binary.ByteOrder) float64 {
+			return float64(bo.Uint64(b))
+		},
+	},
+	"int64": {
+		size: 8,
+		parser: func(b []byte, bo binary.ByteOrder) float64 {
+			return float64(int64(bo.Uint64(b)))
+		},
+	},
+	"float64": {
+		size: 8,
+		parser: func(b []byte, bo binary.ByteOrder) float64 {
+			return math.Float64frombits(bo.Uint64(b))
+		},
+	},
+}
 
 func ConvertBinary(filename string, encoding string, littleEndian bool, width, height int32) []float64 {
 
@@ -17,33 +74,13 @@ func ConvertBinary(filename string, encoding string, littleEndian bool, width, h
 		byteOrder = binary.BigEndian
 	}
 
-	var buf []byte
-	var parseFunc func([]byte) float64
-	switch encoding {
-	case "uint32":
-		buf = make([]byte, 4)
-		parseFunc = func(b []byte) float64 {
-			return float64(byteOrder.Uint32(b))
-		}
-	case "int32":
-		buf = make([]byte, 4)
-		parseFunc = func(b []byte) float64 {
-			return float64(int32(byteOrder.Uint32(b)))
-		}
-	case "float64":
-		buf = make([]byte, 4)
-		parseFunc = func(b []byte) float64 {
-			pad := make([]byte, 8)
-			copy(pad, b)
-			bits := byteOrder.Uint64(pad)
-			return math.Float64frombits(bits)
-		}
-	case "uint64":
-		buf = make([]byte, 8)
-		parseFunc = func(b []byte) float64 {
-			return float64(byteOrder.Uint64(b))
-		}
+	d, ok := decoders[encoding]
+	if !ok {
+		log.Fatalf("unsupported encoding: %s", encoding)
 	}
+
+	buf := make([]byte, d.size)
+	parseFunc := d.parser
 
 	file, err := os.Open(filename)
 	if err != nil {
@@ -59,11 +96,15 @@ func ConvertBinary(filename string, encoding string, littleEndian bool, width, h
 			if err == io.EOF || n == 0 {
 				break
 			}
-			fmt.Printf("error reading file: %v", err)
+			fmt.Printf("error reading file: %v\n", err)
 			return nil
 		}
 
-		val := parseFunc(buf)
+		if n < len(buf) {
+			fmt.Printf("error: less than %d bytes read, check encoding\n", len(buf))
+			return nil
+		}
+		val := parseFunc(buf, byteOrder)
 		res = append(res, val)
 	}
 
