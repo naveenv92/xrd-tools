@@ -2,7 +2,6 @@ package convert
 
 import (
 	"encoding/binary"
-	"fmt"
 	"io"
 	"log"
 	"math"
@@ -84,8 +83,7 @@ func ConvertBinary(filename string, encoding string, littleEndian bool, width, h
 
 	file, err := os.Open(filename)
 	if err != nil {
-		fmt.Printf("error opening file: %v", err)
-		return nil
+		log.Fatalf("error opening file: %v", err)
 	}
 	defer file.Close()
 
@@ -96,13 +94,12 @@ func ConvertBinary(filename string, encoding string, littleEndian bool, width, h
 			if err == io.EOF || n == 0 {
 				break
 			}
-			fmt.Printf("error reading file: %v\n", err)
-			return nil
+
+			log.Fatalf("error reading file: %v", err)
 		}
 
 		if n < len(buf) {
-			fmt.Printf("error: less than %d bytes read, check encoding\n", len(buf))
-			return nil
+			log.Fatalf("error: less than %d bytes read, check encoding", len(buf))
 		}
 		val := parseFunc(buf, byteOrder)
 		res = append(res, val)
